@@ -269,10 +269,10 @@ export function Todo() {
       />
 
       {/* Day header: date + calendar on the left, live date on the right */}
-      <div className="glass flex flex-wrap items-center justify-between gap-4 p-5">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow">
-            <CalendarIcon className="h-6 w-6" />
+      <div className="glass flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+        <div className="flex items-center gap-2.5">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow">
+            <CalendarIcon className="h-5 w-5" />
           </div>
           <div className="leading-tight">
             <p className="font-display text-lg font-extrabold text-blush-900">
@@ -284,7 +284,7 @@ export function Todo() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => {
               if (showCal) {
@@ -345,7 +345,7 @@ export function Todo() {
             const items = todoRoutine.filter((t) => t.section === s.key)
             const done = items.filter((t) => taskStatus(t.id)).length
             return (
-              <section key={s.key} className="glass p-5">
+              <section key={s.key} className="glass p-4 sm:p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h3 className="flex items-center gap-2 font-display text-lg font-extrabold text-blush-900">
                     <span>{s.emoji}</span>
@@ -434,7 +434,7 @@ export function Todo() {
           })}
 
           {as === 'ellie' || todoDay.completed ? (
-            <div className="glass p-5">
+            <div className="glass p-4 sm:p-5">
               {as === 'ellie' ? (
                 <div>
                   <h3 className="flex items-center gap-2 font-display text-lg font-extrabold text-blush-900">
@@ -457,7 +457,7 @@ export function Todo() {
                           }
                           setRating(n)
                         }}
-                        className={`grid h-9 w-9 place-items-center rounded-xl text-sm font-extrabold transition ${
+                        className={`grid h-8 w-8 place-items-center rounded-xl text-sm font-extrabold transition ${
                           todoDay.rating === n
                             ? 'bg-blush-500 text-white shadow'
                             : 'bg-white/70 text-blush-500 hover:bg-white'
@@ -517,7 +517,7 @@ export function Todo() {
           ) : null}
 
           {/* Extra tasks for the day */}
-          <section className="glass-soft p-5">
+          <section className="glass-soft p-4 sm:p-5">
             <h3 className="flex items-center gap-2 font-display text-lg font-extrabold text-blush-900">
               <span>🎯</span> Extra Goals for Today
             </h3>
@@ -536,7 +536,7 @@ export function Todo() {
                     role="checkbox"
                     aria-checked={extraStatus(e.id)}
                     onClick={() => toggleExtra(e.id)}
-                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border-2 transition ${
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg border-2 transition ${
                       extraStatus(e.id)
                         ? 'border-blush-500 bg-blush-500 text-white'
                         : 'border-blush-300 bg-white text-transparent hover:border-blush-500'
@@ -600,7 +600,7 @@ export function Todo() {
               onDelete={deleteLog}
             />
           ) : (
-            <div className="glass-soft p-5 text-center">
+            <div className="glass-soft p-4 text-center sm:p-5">
               <p className="text-3xl">🔒</p>
               <p className="mt-2 font-display font-extrabold text-blush-600">
                 The archive is Micah's corner
@@ -925,13 +925,13 @@ function TaskRow({
   onRemove: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-2.5 transition">
+    <div className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 transition sm:gap-3 sm:px-4 sm:py-2.5">
       {handle}
       <button
         role="checkbox"
         aria-checked={done}
         onClick={onToggle}
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border-2 transition ${
+        className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg border-2 transition ${
           done
             ? 'border-blush-500 bg-blush-500 text-white'
             : 'border-blush-300 bg-white text-transparent hover:border-blush-500'
@@ -989,7 +989,7 @@ function HistoryPanel({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   return (
-    <div className="glass p-5">
+    <div className="glass p-4 sm:p-5">
       <h3 className="flex items-center gap-2 font-display text-lg font-extrabold text-blush-900">
         <StarIcon className="h-5 w-5" />
         Saved Days

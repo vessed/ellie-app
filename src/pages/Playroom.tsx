@@ -1,4 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { WHO_NAME } from '../lib/types'
 import type { Who } from '../lib/types'
 import { PageHeader } from '../components/PageHeader'
@@ -32,6 +39,25 @@ const LittleGardenM = memo(LittleGarden)
 export function Playroom() {
   const playroom = usePlayroom()
   const [selected, setSelected] = useState<string | null>(null)
+
+  /* Opening a game swaps the tall game list for a short game view, which makes
+     the browser clamp the scroll to the top. Remember where the list was so we
+     can drop the person right back there when they hit "All games". */
+  const scrollElRef = useRef<HTMLElement | null>(null)
+  const savedScrollRef = useRef(0)
+  const openGame = (key: string) => {
+    const main = document.querySelector('main')
+    if (main) {
+      scrollElRef.current = main
+      savedScrollRef.current = main.scrollTop
+    }
+    setSelected(key)
+  }
+  useLayoutEffect(() => {
+    if (selected === null && scrollElRef.current) {
+      scrollElRef.current.scrollTop = savedScrollRef.current
+    }
+  }, [selected])
 
   const meta = GAMES.find((g) => g.key === selected) ?? null
   const scored = GAMES.filter((g) => !g.care)
@@ -101,7 +127,7 @@ export function Playroom() {
                   <span className="pill">✓ Done today</span>
                 ) : (
                   <button
-                    onClick={() => setSelected(playroom.challenge.key)}
+                    onClick={() => openGame(playroom.challenge.key)}
                     className="btn-candy !py-2"
                   >
                     Play
@@ -115,7 +141,7 @@ export function Playroom() {
             {GAMES.map((g) => (
               <button
                 key={g.key}
-                onClick={() => setSelected(g.key)}
+                onClick={() => openGame(g.key)}
                 className="glass-soft group flex flex-col items-start gap-3 rounded-3xl p-6 text-left transition hover:-translate-y-1 hover:shadow-glow"
               >
                 <span className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-3xl shadow-glow">

@@ -104,10 +104,10 @@ function Screen() {
       <ClickSounds />
       <BackgroundPause />
 
-      <div className="flex h-full w-full gap-6 p-5 lg:gap-8 lg:p-7">
+      <div className="flex h-full w-full gap-6 p-3.5 sm:p-5 lg:gap-8 lg:p-7">
         <Sidebar />
 
-        <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto pr-1 pb-24 md:pb-6">
+        <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden pr-1 pb-24 md:pb-6">
           <TopBar />
           <Suspense fallback={<PageFallback />}>
             {route === 'home' && <Home />}

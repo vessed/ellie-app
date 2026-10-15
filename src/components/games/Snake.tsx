@@ -139,6 +139,51 @@ export function Snake({ onFinish }: { onFinish: (score: number) => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [phase, turn])
 
+  /* Swipe controls for touch screens. Listening natively (with a non-passive
+     touchmove) lets us stop the page from scrolling/lurching while a finger is
+     down inside the board. */
+  const boardRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    const TH = 22
+    let sx = 0
+    let sy = 0
+    let active = false
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0]
+      if (!t) return
+      sx = t.clientX
+      sy = t.clientY
+      active = true
+    }
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault()
+      if (!active) return
+      const t = e.touches[0]
+      if (!t) return
+      const dx = t.clientX - sx
+      const dy = t.clientY - sy
+      if (Math.abs(dx) < TH && Math.abs(dy) < TH) return
+      if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? RIGHT : LEFT)
+      else turn(dy > 0 ? DOWN : UP)
+      active = false
+    }
+    const onEnd = () => {
+      active = false
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+  }, [turn])
+
   const start = () => {
     const init = [
       { x: 7, y: 7 },
@@ -187,7 +232,7 @@ export function Snake({ onFinish }: { onFinish: (score: number) => void }) {
         <span className="pill">Speed {Math.min(score + 1, 21)}</span>
       </div>
 
-      <div className="relative">
+      <div ref={boardRef} className="relative touch-none select-none">
         <div
           className={`relative aspect-square overflow-hidden rounded-3xl border-4 border-blush-400/80 bg-gradient-to-br from-mint-200/70 to-sky-200/60 ring-1 ring-white/60 shadow-[inset_0_0_20px_rgba(0,0,0,0.07)] ${
             phase === 'over' ? 'animate-shake' : ''
