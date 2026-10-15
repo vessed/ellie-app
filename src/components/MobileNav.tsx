@@ -7,8 +7,6 @@ import type { Route } from '../lib/types'
 /* Bottom tab bar + a searchable, grouped full-screen menu for phones. The
    desktop sidebar is hidden below the `md` breakpoint, so this is how the app
    is navigated on a phone. */
-const QUICK: Route[] = ['home', 'daily', 'todo', 'playroom']
-
 const GROUPS: { title: string; keys: Route[] }[] = [
   { title: 'Every day', keys: ['home', 'daily', 'todo', 'mood'] },
   { title: 'Ours', keys: ['notes', 'memories', 'dates', 'treats', 'wishlist'] },
@@ -44,10 +42,6 @@ export function MobileNav() {
   }, [])
 
   const unread = notes.filter((n) => n.to === as && !n.read).length
-
-  const quick = QUICK.map((k) => NAV.find((n) => n.key === k)).filter(
-    (x): x is (typeof NAV)[number] => Boolean(x),
-  )
 
   const byKey = useMemo(() => new Map(NAV.map((n) => [n.key, n])), [])
 
@@ -102,42 +96,52 @@ export function MobileNav() {
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-1 border-t border-white/60 bg-white/85 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] backdrop-blur-md md:hidden">
-        {quick.map((item) => {
-          const Icon = item.icon
-          const active = route === item.key
-          return (
-            <button
-              key={item.key}
-              onClick={() => setRoute(item.key)}
-              className="flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition"
-            >
-              <span
-                className={`grid h-7 w-12 place-items-center rounded-full transition ${
-                  active ? 'bg-blush-200/80 text-blush-700' : 'text-blush-400'
-                }`}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/60 bg-white/85 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] backdrop-blur-md md:hidden">
+        <div className="flex items-stretch gap-0.5 overflow-x-auto px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] [scrollbar-width:thin]">
+          {order.map((key) => {
+            const item = byKey.get(key)
+            if (!item) return null
+            const Icon = item.icon
+            const active = route === key
+            const badge = badgeFor(key)
+            return (
+              <button
+                key={key}
+                onClick={() => setRoute(key)}
+                className="relative flex w-16 shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition"
               >
-                <Icon className="h-5 w-5" />
-              </span>
-              <span
-                className={`text-[0.62rem] font-extrabold ${
-                  active ? 'text-blush-700' : 'text-blush-400'
-                }`}
-              >
-                {item.label}
-              </span>
-            </button>
-          )
-        })}
-        <button
-          onClick={() => setOpen(true)}
-          className="flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-blush-400 transition active:text-blush-600"
-        >
-          <span className="grid h-7 w-12 place-items-center rounded-full">
-            <MenuGlyph />
-          </span>
-          <span className="text-[0.62rem] font-extrabold">More</span>
-        </button>
+                <span
+                  className={`grid h-7 w-12 place-items-center rounded-full transition ${
+                    active ? 'bg-blush-200/80 text-blush-700' : 'text-blush-400'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span
+                  className={`max-w-full truncate text-[0.62rem] font-extrabold ${
+                    active ? 'text-blush-700' : 'text-blush-400'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {badge > 0 && (
+                  <span className="absolute right-1 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-blush-500 px-1 text-[0.55rem] font-extrabold text-white shadow">
+                    {badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+          <button
+            onClick={() => setOpen(true)}
+            className="flex w-16 shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 text-blush-400 transition active:text-blush-600"
+          >
+            <span className="grid h-7 w-12 place-items-center rounded-full">
+              <MenuGlyph />
+            </span>
+            <span className="text-[0.62rem] font-extrabold">More</span>
+          </button>
+        </div>
       </nav>
 
       {open && (

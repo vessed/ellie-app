@@ -25,6 +25,13 @@ import {
   suggestRoom,
   type SyncCfg,
 } from '../lib/sync'
+import {
+  notificationPermission,
+  notificationSupport,
+  osNotifyPref,
+  requestNotificationPermission,
+  setOsNotifyPref,
+} from '../lib/notify'
 
 const THEMES: {
   key: Theme
@@ -117,6 +124,10 @@ export function Settings() {
   const emojiRef = useRef<HTMLInputElement | null>(null)
   const backupRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [notifPerm, setNotifPerm] = useState<
+    NotificationPermission | 'unsupported'
+  >(notificationPermission)
+  const [notifOn, setNotifOn] = useState(osNotifyPref)
   const [code, setCode] = useState('')
   const { spotify, connectSpotify, disconnectSpotify } = usePlayer()
   const [clientId, setClientId] = useState(
@@ -340,6 +351,21 @@ export function Settings() {
   const saveBackup = () => {
     const count = downloadBackup()
     pushToast(`Backup saved — ${count} things tucked away safely 💾`, '💾')
+  }
+
+  const enableNotifications = async () => {
+    if (!notificationSupport()) {
+      pushToast('This device can’t show notifications here 🙈', '🙈')
+      return
+    }
+    const ok = await requestNotificationPermission()
+    setNotifPerm(notificationPermission())
+    setOsNotifyPref(ok)
+    setNotifOn(ok)
+    pushToast(
+      ok ? 'Notifications turned on 🔔' : 'No worries — you can turn them on later 🙈',
+      ok ? '🔔' : '🙈',
+    )
   }
 
   const loadBackup = async (files: FileList | null) => {
@@ -653,6 +679,53 @@ create policy "update" on public.rooms
   for update using (true) with check (true);`}
             </pre>
           </details>
+        </div>
+      </section>
+
+      <section className="glass p-6">
+        <div className="relative z-10">
+          <h3 className="font-display text-lg font-extrabold text-blush-900">
+            Notifications 🔔
+          </h3>
+          <p className="mb-4 text-sm font-semibold text-blush-700/75">
+            Get a pop-up when a heart, love note, mood change or reminder
+            arrives while the app is open in the background.
+          </p>
+
+          {notifPerm === 'unsupported' ? (
+            <p className="rounded-xl bg-white/50 p-3 text-xs font-semibold text-blush-500">
+              This device doesn’t support notifications here yet. On iPhone, first
+              add Ellie to your Home Screen (Safari → Share → Add to Home
+              Screen), then open it from that icon.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => void enableNotifications()}
+                className={
+                  notifOn && notifPerm === 'granted' ? 'btn-ghost' : 'btn-candy'
+                }
+              >
+                {notifOn && notifPerm === 'granted'
+                  ? 'Notifications are on ✓'
+                  : notifPerm === 'denied'
+                    ? 'Blocked — allow in browser settings'
+                    : 'Turn on notifications'}
+              </button>
+              {notifOn && notifPerm === 'granted' && (
+                <button
+                  onClick={() => {
+                    setOsNotifyPref(false)
+                    setNotifOn(false)
+                    pushToast('Notifications turned off 🔕', '🔕')
+                  }}
+                  className="btn-ghost"
+                >
+                  Turn off
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

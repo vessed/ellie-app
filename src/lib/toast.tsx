@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { uid, type Toast } from './types'
+import { osNotify } from './notify'
 
 /* Toasts live in their own tiny context on purpose: showing one used to change
    the giant app context value, which re-rendered *everything* (sidebar, the open
@@ -32,6 +33,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const pushToast = useCallback(
     (message: string, emoji = '💗', action?: () => void) => {
       const id = uid()
+      /* Mirror the toast to an OS notification when the window isn't focused,
+         so a heart/note/mood that arrives in the background still gets noticed. */
+      osNotify(message, emoji)
       setToasts((t) => {
         /* don't stack duplicates of the same message (let fading ones finish) */
         const withoutDup = t.filter((x) => x.leaving || x.message !== message)
