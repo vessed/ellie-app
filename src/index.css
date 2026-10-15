@@ -761,3 +761,11 @@ html[data-game='1'] .game-doodle {
     animation: none !important;
   }
 }
+
+/* Phones: keep the cozy look but freeze the looping background blobs & sparkles
+   so scrolling and typing stay smooth and the battery lasts longer. */
+@media (max-width: 767px) {
+  .bg-blob {
+    animation: none !important;
+  }
+}

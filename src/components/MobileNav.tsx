@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../lib/store'
 import { NAV, loadNavOrder } from '../lib/nav'
 import { CloseIcon } from './Icons'
 import type { Route } from '../lib/types'
 
-/* Bottom tab bar + full-screen menu for phones. The desktop sidebar is hidden
-   below the `md` breakpoint, so this is how the app is navigated on a phone. */
+/* Bottom tab bar + a searchable, grouped full-screen menu for phones. The
+   desktop sidebar is hidden below the `md` breakpoint, so this is how the app
+   is navigated on a phone. */
 const QUICK: Route[] = ['home', 'daily', 'todo', 'playroom']
+
+const GROUPS: { title: string; keys: Route[] }[] = [
+  { title: 'Every day', keys: ['home', 'daily', 'todo', 'mood'] },
+  { title: 'Ours', keys: ['notes', 'memories', 'dates', 'treats', 'wishlist'] },
+  { title: 'Play & unwind', keys: ['playroom', 'music', 'library'] },
+  { title: 'Settings', keys: ['rules', 'settings'] },
+]
 
 function MenuGlyph() {
   return (
@@ -24,8 +32,9 @@ function MenuGlyph() {
 }
 
 export function MobileNav() {
-  const { route, setRoute } = useApp()
+  const { route, setRoute, notes, as } = useApp()
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const [order, setOrder] = useState<Route[]>(loadNavOrder)
 
   useEffect(() => {
@@ -34,9 +43,62 @@ export function MobileNav() {
     return () => window.removeEventListener('focus', refresh)
   }, [])
 
+  const unread = notes.filter((n) => n.to === as && !n.read).length
+
   const quick = QUICK.map((k) => NAV.find((n) => n.key === k)).filter(
     (x): x is (typeof NAV)[number] => Boolean(x),
   )
+
+  const byKey = useMemo(() => new Map(NAV.map((n) => [n.key, n])), [])
+
+  const q = query.trim().toLowerCase()
+  const matches = q
+    ? order
+        .map((k) => byKey.get(k))
+        .filter(
+          (x): x is (typeof NAV)[number] =>
+            Boolean(x) && x!.label.toLowerCase().includes(q),
+        )
+    : []
+
+  const go = (r: Route) => {
+    setOpen(false)
+    setQuery('')
+    setRoute(r)
+  }
+
+  const badgeFor = (key: Route) => (key === 'notes' ? unread : 0)
+
+  const tile = (key: Route) => {
+    const item = byKey.get(key)
+    if (!item) return null
+    const Icon = item.icon
+    const active = route === key
+    const badge = badgeFor(key)
+    return (
+      <button
+        key={key}
+        onClick={() => go(key)}
+        className="relative flex flex-col items-center gap-2 rounded-2xl bg-white/70 px-2 py-4 text-center shadow-sm transition active:scale-95"
+      >
+        <span
+          className={`grid h-11 w-11 place-items-center rounded-2xl transition ${
+            active
+              ? 'bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow'
+              : 'bg-white/80 text-blush-500'
+          }`}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <span className="text-xs font-extrabold text-blush-800">{item.label}</span>
+        {badge > 0 && (
+          <span className="absolute right-2 top-2 grid h-5 min-w-5 place-items-center rounded-full bg-blush-500 px-1 text-[0.6rem] font-extrabold text-white shadow">
+            {badge}
+          </span>
+        )}
+      </button>
+    )
+  }
 
   return (
     <>
@@ -48,12 +110,22 @@ export function MobileNav() {
             <button
               key={item.key}
               onClick={() => setRoute(item.key)}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
-                active ? 'text-blush-600' : 'text-blush-400'
-              }`}
+              className="flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition"
             >
-              <Icon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-extrabold">{item.label}</span>
+              <span
+                className={`grid h-7 w-12 place-items-center rounded-full transition ${
+                  active ? 'bg-blush-200/80 text-blush-700' : 'text-blush-400'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              <span
+                className={`text-[0.62rem] font-extrabold ${
+                  active ? 'text-blush-700' : 'text-blush-400'
+                }`}
+              >
+                {item.label}
+              </span>
             </button>
           )
         })}
@@ -61,55 +133,65 @@ export function MobileNav() {
           onClick={() => setOpen(true)}
           className="flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-blush-400 transition active:text-blush-600"
         >
-          <MenuGlyph />
+          <span className="grid h-7 w-12 place-items-center rounded-full">
+            <MenuGlyph />
+          </span>
           <span className="text-[0.62rem] font-extrabold">More</span>
         </button>
       </nav>
 
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col bg-white/95 backdrop-blur-md md:hidden">
-          <div className="flex items-center justify-between border-b border-white/60 px-5 pt-4 pb-3">
+          <div className="flex items-center justify-between gap-3 border-b border-white/60 px-4 pt-4 pb-3">
             <span className="font-display text-lg font-extrabold text-candy-dark">
-              Menu
+              Find anything
             </span>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                setQuery('')
+              }}
               aria-label="Close menu"
-              className="btn-ghost !px-3 !py-2"
+              className="btn-ghost shrink-0 !px-3 !py-2"
             >
               <CloseIcon className="h-5 w-5" />
             </button>
           </div>
-          <div className="grid flex-1 grid-cols-3 content-start gap-3 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-            {order.map((key) => {
-              const item = NAV.find((n) => n.key === key)
-              if (!item) return null
-              const Icon = item.icon
-              const active = route === key
-              return (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setOpen(false)
-                    setRoute(key)
-                  }}
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-white/60 px-2 py-4 text-center shadow-sm transition active:scale-95"
-                >
-                  <span
-                    className={`grid h-11 w-11 place-items-center rounded-2xl transition ${
-                      active
-                        ? 'bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow'
-                        : 'bg-white/70 text-blush-500'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="text-xs font-extrabold text-blush-800">
-                    {item.label}
-                  </span>
-                </button>
+
+          <div className="px-4 pt-3">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search… notes, treats, music"
+              autoComplete="off"
+              className="w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm font-semibold text-blush-800 shadow-sm outline-none placeholder:text-blush-400 focus:border-blush-300"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            {q ? (
+              matches.length > 0 ? (
+                <div className="grid grid-cols-3 gap-3">{matches.map((m) => tile(m.key))}</div>
+              ) : (
+                <p className="mt-10 text-center text-sm font-semibold text-blush-500">
+                  Nothing matches “{query}”.
+                </p>
               )
-            })}
+            ) : (
+              GROUPS.map((g) => {
+                const keys = order.filter((k) => g.keys.includes(k))
+                if (keys.length === 0) return null
+                return (
+                  <div key={g.title} className="mb-5 last:mb-0">
+                    <p className="mb-2 px-1 text-xs font-extrabold uppercase tracking-widest text-blush-400">
+                      {g.title}
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">{keys.map((k) => tile(k))}</div>
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
       )}

@@ -29,7 +29,7 @@ export function PlayerWidget() {
   return (
     <div
       onClick={() => setRoute('music')}
-      className="glass-soft relative flex h-14 w-64 cursor-pointer items-center gap-2.5 overflow-hidden rounded-2xl border-blush-200/70 bg-gradient-to-br from-blush-200/50 to-lilac-200/40 px-3 transition hover:-translate-y-0.5"
+      className="glass-soft relative flex h-12 w-auto max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-2xl border-blush-200/70 bg-gradient-to-br from-blush-200/50 to-lilac-200/40 px-2.5 transition hover:-translate-y-0.5 sm:h-14 sm:w-64 sm:gap-2.5 sm:px-3"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -45,10 +45,10 @@ export function PlayerWidget() {
       </span>
 
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block text-[0.6rem] font-extrabold uppercase tracking-wider text-blush-400">
+        <span className="hidden text-[0.6rem] font-extrabold uppercase tracking-wider text-blush-400 sm:block">
           now playing
         </span>
-        <span className="block truncate text-sm font-extrabold text-blush-800">
+        <span className="block max-w-[7rem] truncate text-sm font-extrabold text-blush-800 sm:max-w-none">
           {song ? song.title : 'Pick a song ♪'}
         </span>
       </span>
@@ -73,7 +73,7 @@ export function PlayerWidget() {
               prev()
             }}
             aria-label="Previous"
-            className="ctrl !h-7 !w-7"
+            className="ctrl hidden !h-7 !w-7 sm:inline-flex"
           >
             <SkipPrevIcon className="h-3.5 w-3.5" />
           </button>
@@ -97,7 +97,7 @@ export function PlayerWidget() {
               next()
             }}
             aria-label="Next"
-            className="ctrl !h-7 !w-7"
+            className="ctrl hidden !h-7 !w-7 sm:inline-flex"
             disabled={queue.length <= 1}
           >
             <SkipNextIcon className="h-3.5 w-3.5" />

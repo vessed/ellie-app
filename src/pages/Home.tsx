@@ -5,6 +5,8 @@ import { inputCls } from '../components/Modal'
 import { EditIcon } from '../components/Icons'
 import type { Route } from '../lib/types'
 import {
+  BlocksIcon,
+  BookIcon,
   CalendarIcon,
   CameraIcon,
   GiftIcon,
@@ -15,6 +17,7 @@ import {
   RibbonIcon,
   SparkleIcon,
   StarIcon,
+  TodoIcon,
 } from '../components/Icons'
 
 type IconType = typeof CalendarIcon
@@ -40,6 +43,27 @@ const features: {
     icon: StarIcon,
     tint: 'from-butter-200/80 to-blush-200/70',
     route: 'daily',
+  },
+  {
+    title: 'Checklist',
+    desc: 'Our little routine for the day.',
+    icon: TodoIcon,
+    tint: 'from-mint-200/80 to-butter-200/70',
+    route: 'todo',
+  },
+  {
+    title: 'Playroom',
+    desc: 'Games, our pup & little garden.',
+    icon: BlocksIcon,
+    tint: 'from-lilac-200/80 to-sky-200/70',
+    route: 'playroom',
+  },
+  {
+    title: 'Library',
+    desc: 'Journals & cosy bedtime stories.',
+    icon: BookIcon,
+    tint: 'from-sky-200/80 to-lilac-200/70',
+    route: 'library',
   },
   {
     title: 'Date Ideas',

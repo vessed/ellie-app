@@ -117,6 +117,7 @@ export function Settings() {
   const emojiRef = useRef<HTMLInputElement | null>(null)
   const backupRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [code, setCode] = useState('')
   const { spotify, connectSpotify, disconnectSpotify } = usePlayer()
   const [clientId, setClientId] = useState(
     () => localStorage.getItem('ellie-spotify-cid') ?? loadProfile()?.clientId ?? '',
@@ -240,16 +241,17 @@ export function Settings() {
     pushToast('Anniversary saved for forever 💞', '💞')
   }
 
-  const connect = () => {
-    if (!conn.url.trim().startsWith('https://')) {
+  const connect = (override?: SyncCfg) => {
+    const cfg = override ?? conn
+    if (!cfg.url.trim().startsWith('https://')) {
       pushToast('Paste your Supabase project URL first 🔗', '🙈')
       return
     }
-    if (conn.key.trim().length < 20) {
+    if (cfg.key.trim().length < 20) {
       pushToast('Paste your Supabase anon key first 🔑', '🙈')
       return
     }
-    if (!roomKeyOK(conn.room)) {
+    if (!roomKeyOK(cfg.room)) {
       pushToast(
         'Pick a room name — only letters, numbers, dashes and dots ✏️',
         '🙈',
@@ -257,17 +259,63 @@ export function Settings() {
       return
     }
     setSyncCfg({
-      url: conn.url.trim(),
-      key: conn.key.trim(),
-      room: conn.room.trim(),
+      url: cfg.url.trim(),
+      key: cfg.key.trim(),
+      room: cfg.room.trim(),
     })
-    pushToast('Cloud sync connected! Both PCs will match 💞', '☁️')
+    pushToast('Cloud sync connected! All your devices will match 💞', '☁️')
+  }
+
+  const encodeCfg = (c: SyncCfg) =>
+    'ELLIESYNC1:' + btoa(unescape(encodeURIComponent(JSON.stringify(c))))
+
+  const decodeCfg = (raw: string): SyncCfg | null => {
+    try {
+      const body = raw.trim().replace(/^ELLIESYNC1:\s*/i, '')
+      const obj = JSON.parse(decodeURIComponent(escape(atob(body))))
+      if (
+        obj &&
+        typeof obj.url === 'string' &&
+        typeof obj.key === 'string' &&
+        typeof obj.room === 'string'
+      )
+        return { url: obj.url, key: obj.key, room: obj.room }
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+
+  const copySetupCode = async () => {
+    const src = syncCfg.room ? syncCfg : conn
+    if (!src.url || !src.key || !src.room) {
+      pushToast('Connect this device first, then copy the code 🔗', '🙈')
+      return
+    }
+    const text = encodeCfg(src)
+    setCode(text)
+    try {
+      await navigator.clipboard.writeText(text)
+      pushToast('Setup code copied — paste it on your other device 💞', '☁️')
+    } catch {
+      pushToast('Code is in the box — copy it to your other device 📋', '☁️')
+    }
+  }
+
+  const useSetupCode = () => {
+    const cfg = decodeCfg(code)
+    if (!cfg) {
+      pushToast('That code looks off — paste the whole line 🙈', '🙈')
+      return
+    }
+    setConn(cfg)
+    connect(cfg)
   }
 
   const disconnect = () => {
     if (
       !window.confirm(
-        `Unsync this device from room “${syncCfg.room}”?\n\nYou keep all your data on this PC, but it will stop matching the other PC. You can re-connect anytime with the same room name.`,
+        `Unsync this device from room “${syncCfg.room}”?\n\nYou keep all your data on this device, but it will stop matching your other devices. You can re-connect anytime with the same room name.`,
       )
     )
       return
@@ -458,7 +506,8 @@ export function Settings() {
           </div>
           <p className="mb-4 text-sm font-semibold text-blush-700/75">
             Our own little cloud — anything you or Ellie add shows up on the
-            other PC automatically. Same room name on both, and you're matching.
+            other device automatically. Same room name on all of them, and you're
+            matching.
           </p>
 
           <div className="mb-3 rounded-xl bg-white/50 p-3 text-xs font-semibold text-blush-500">
@@ -488,7 +537,7 @@ export function Settings() {
                 onChange={(e) => setConn({ ...conn, key: e.target.value })}
               />
             </Field>
-            <Field label="Our room name (type the same one on both PCs)">
+            <Field label="Our room name (the same on all your devices)">
               <div className="flex gap-2">
                 <input
                   className={`${inputCls} flex-1`}
@@ -513,7 +562,7 @@ export function Settings() {
                   Unsync
                 </button>
               ) : (
-                <button onClick={connect} className="btn-candy">
+                <button onClick={() => connect()} className="btn-candy">
                   <CheckIcon className="h-4.5 w-4.5" />
                   Connect to our cloud
                 </button>
@@ -521,6 +570,39 @@ export function Settings() {
               <button onClick={syncNow} className="btn-ghost">
                 Sync now
               </button>
+            </div>
+
+            <div className="rounded-xl bg-white/50 p-3">
+              <p className="mb-2 text-xs font-extrabold text-blush-600">
+                Add another device in one tap 💞
+              </p>
+              <p className="mb-2 text-xs font-semibold text-blush-500">
+                On this device press Copy, then paste the code on your phone or
+                other PC and press Use pasted code — no retyping keys.
+              </p>
+              <div className="flex flex-col gap-2">
+                <input
+                  className={`${inputCls} font-mono text-[0.7rem]`}
+                  placeholder="Paste a setup code from another device…"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => void copySetupCode()}
+                    className="btn-ghost !px-3 text-sm"
+                  >
+                    Copy setup code
+                  </button>
+                  <button
+                    onClick={useSetupCode}
+                    disabled={!code.trim()}
+                    className="btn-ghost !px-3 text-sm disabled:opacity-40"
+                  >
+                    Use pasted code
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -550,8 +632,9 @@ export function Settings() {
                 <span className="font-extrabold">anon</span> key.
               </li>
               <li>
-                Paste both here, pick a room name, press Connect — do the exact
-                same (same room name) on the other PC.
+                Paste both here, pick a room name, press Connect. On your other
+                devices, just paste a setup code (Copy / Use above) instead of
+                retyping — phone, tablet or the other PC.
               </li>
             </ol>
             <pre className="mt-2 overflow-x-auto rounded-lg bg-white/70 p-3 text-[10px] leading-relaxed text-blush-700">

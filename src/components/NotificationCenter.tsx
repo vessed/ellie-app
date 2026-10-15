@@ -35,16 +35,32 @@ function loadSeen(): Set<string> {
   return new Set()
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({
+  variant = 'sidebar',
+}: {
+  variant?: 'sidebar' | 'icon'
+}) {
   const { notes, setNotes, heartEvents, as, setRoute } = useApp()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ x: 0, bottom: 0, maxH: 480 })
   const [cleared, setCleared] = useState(loadCleared)
   const [seen, setSeen] = useState<Set<string>>(loadSeen)
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 767px)').matches,
+  )
   const btnRef = useRef<HTMLButtonElement | null>(null)
 
   const unread = notes.filter((n) => n.to === as && !n.read).length
   const badge = unread
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const on = () => setIsMobile(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
 
   useEffect(() => {
     try {
@@ -120,39 +136,63 @@ export function NotificationCenter() {
 
   return (
     <>
-      <button
-        ref={btnRef}
-        onClick={toggle}
-        aria-label="Notifications"
-        className="glass-soft relative mt-auto flex items-center gap-3 rounded-2xl p-3 pt-6 transition hover:-translate-y-0.5"
-      >
-        <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-lilac-200 to-blush-200 text-blush-600">
+      {variant === 'icon' ? (
+        <button
+          ref={btnRef}
+          onClick={toggle}
+          aria-label="Notifications"
+          className="glass-soft relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-blush-600 transition hover:-translate-y-0.5"
+        >
           <BellIcon className="h-5 w-5" />
           {badge > 0 && (
-            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-blush-500 px-1 text-[0.6rem] font-extrabold text-white shadow">
+            <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-blush-500 px-1 text-[0.6rem] font-extrabold text-white shadow">
               {badge}
             </span>
           )}
-        </span>
-        <span className="leading-tight text-left">
-          <span className="block text-sm font-extrabold text-blush-800">
-            Notifications
+        </button>
+      ) : (
+        <button
+          ref={btnRef}
+          onClick={toggle}
+          aria-label="Notifications"
+          className="glass-soft relative mt-auto flex items-center gap-3 rounded-2xl p-3 pt-6 transition hover:-translate-y-0.5"
+        >
+          <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-lilac-200 to-blush-200 text-blush-600">
+            <BellIcon className="h-5 w-5" />
+            {badge > 0 && (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-blush-500 px-1 text-[0.6rem] font-extrabold text-white shadow">
+                {badge}
+              </span>
+            )}
           </span>
-          <span className="block text-xs font-semibold text-blush-700/70">
-            {badge > 0
-              ? `${badge} new note${badge > 1 ? 's' : ''}`
-              : heartEvents.length > 0
-                ? 'hearts & notes'
-                : 'all caught up'}
+          <span className="leading-tight text-left">
+            <span className="block text-sm font-extrabold text-blush-800">
+              Notifications
+            </span>
+            <span className="block text-xs font-semibold text-blush-700/70">
+              {badge > 0
+                ? `${badge} new note${badge > 1 ? 's' : ''}`
+                : heartEvents.length > 0
+                  ? 'hearts & notes'
+                  : 'all caught up'}
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      )}
 
       {open && (
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ left: pos.x, bottom: pos.bottom, maxHeight: pos.maxH }}
-          className="glass fixed z-50 flex w-[22rem] max-w-[calc(100vw-24px)] flex-col animate-pop rounded-3xl !overflow-visible"
+          style={
+            isMobile
+              ? { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)' }
+              : { left: pos.x, bottom: pos.bottom, maxHeight: pos.maxH }
+          }
+          className={
+            isMobile
+              ? 'glass animate-pop fixed inset-x-2 z-50 flex max-h-[72vh] flex-col rounded-3xl'
+              : 'glass animate-pop fixed z-50 flex w-[22rem] max-w-[calc(100vw-24px)] flex-col rounded-3xl !overflow-visible'
+          }
         >
           <div className="relative z-10 flex items-center gap-2 p-4 pb-2">
             <BellIcon className="h-5 w-5 text-blush-500" />

@@ -81,6 +81,18 @@ function bindFlushOnce() {
   })
 }
 
+/* A cheap fingerprint of a sync bundle — per-key write timestamps plus array
+   sizes — so the 5s poll can tell "is anything new?" without stringifying the
+   whole payload (which can hold large base64 photos). */
+function syncSig(b: Record<string, SyncBundle>): string {
+  let s = ''
+  for (const k of SHARED_KEYS) {
+    const e = b[k]
+    s += e ? `${k}:${e.t}:${e.del ? e.del.length : 0}|` : `${k}:-|`
+  }
+  return s
+}
+
 /* Every value is written to localStorage for fast sync reads and mirrored to
    IndexedDB, which survives the eviction that can wipe localStorage on iOS. */
 function writeThrough(key: string, json: string) {
@@ -798,6 +810,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     if (!restored) sharedRef.current = {}
     lastPushedRef.current = ''
+    /* Fingerprints of the last remote + last pushed payloads, so an idle poll
+       can skip merging/stringifying everything when nothing changed. */
+    let lastRemoteSig = ''
+    let lastPushedSig = ''
     /* A value with no stored timestamp is treated as oldest, so on first join the
        existing room wins; genuinely new local edits get Date.now() in refreshLocal. */
     const bootT = 0
@@ -900,19 +916,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
            silently overwrite the other device's newer data. */
         const remote = await fetchRoom(c, r)
         if (remote) {
+          lastRemoteSig = syncSig(remote)
           const merged = mergeBundles(sharedRef.current, remote)
           sharedRef.current = merged
           applyToState(merged)
         }
         const payload = sharedRef.current
-        const json = JSON.stringify(payload)
-        if (json === lastPushedRef.current) {
+        const psig = syncSig(payload)
+        if (psig === lastPushedSig) {
           setSyncStatus((s) => (s === 'off' ? s : 'synced'))
           return
         }
         const ok = await pushRoom(c, r, payload)
         if (ok) {
-          lastPushedRef.current = json
+          lastPushedRef.current = ''
+          lastPushedSig = psig
+          lastRemoteSig = psig
           for (const k of SHARED_KEYS)
             shadowRef.current[k] = new Set(idsOf(payload[k]?.v))
           persistMeta()
@@ -940,15 +959,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         void doPush()
         return
       }
-      const merged = mergeBundles(sharedRef.current, remote)
-      if (JSON.stringify(merged) !== JSON.stringify(sharedRef.current)) {
+      const rsig = syncSig(remote)
+      if (rsig !== lastRemoteSig) {
+        lastRemoteSig = rsig
+        const merged = mergeBundles(sharedRef.current, remote)
         sharedRef.current = merged
         applyToState(merged)
+        for (const k of SHARED_KEYS)
+          shadowRef.current[k] = new Set(idsOf(merged[k]?.v))
+        persistMeta()
       }
-      for (const k of SHARED_KEYS)
-        shadowRef.current[k] = new Set(idsOf(merged[k]?.v))
-      persistMeta()
-      if (JSON.stringify(merged) !== lastPushedRef.current) void doPush()
+      if (syncSig(sharedRef.current) !== lastPushedSig) void doPush()
       setSyncStatus('synced')
     }
     refreshLocalRef.current = refreshLocal
@@ -962,9 +983,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void poll()
     }
     const iv = window.setInterval(() => void poll(), 5000)
+
+    /* Phones throttle background timers, so refresh the moment the app comes
+       back to the foreground instead of waiting for the next 5s tick. */
+    const onWake = () => {
+      if (!clientRef.current || !roomRef.current) return
+      if (typeof document !== 'undefined' && document.hidden) return
+      void poll()
+    }
+    window.addEventListener('focus', onWake)
+    document.addEventListener('visibilitychange', onWake)
     return () => {
       window.clearInterval(iv)
       if (pushTimerRef.current) window.clearTimeout(pushTimerRef.current)
+      window.removeEventListener('focus', onWake)
+      document.removeEventListener('visibilitychange', onWake)
     }
   }, [syncCfg])
 
