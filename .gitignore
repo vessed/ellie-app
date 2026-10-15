@@ -16,6 +16,9 @@ dist-ssr
 src-tauri/target/
 src-tauri/gen/schemas/
 
+# Local release staging (installers/manifests prepared for upload)
+upload-*/
+
 # Tauri updater signing keys — NEVER commit these (anyone with the private
 # key can sign updates your installs will trust)
 tauri-updater-private.key
