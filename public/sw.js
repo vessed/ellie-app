@@ -31,6 +31,11 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+/* Let the page tell a freshly-installed worker to take over right away. */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 const ASSET_RE = /\.(?:js|mjs|css|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot|mp3|wav|ogg|m4a|flac|json|webmanifest)$/i
 
 self.addEventListener('fetch', (event) => {

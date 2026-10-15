@@ -58,6 +58,53 @@ const THEMES: {
   },
 ]
 
+/* The web/PWA build updates by deploying new files; the service worker picks
+   them up. "Check for updates" asks the browser to look for a new worker and,
+   if one is found, refreshes into it. */
+async function checkWebUpdate(setMsg: (s: string) => void): Promise<void> {
+  if (!('serviceWorker' in navigator)) {
+    setMsg("You're on the latest version ✨")
+    return
+  }
+  setMsg('Checking for updates…')
+  const reg = await navigator.serviceWorker.getRegistration()
+  if (!reg) {
+    setMsg("You're on the latest version ✨")
+    return
+  }
+
+  let found = false
+  const onUpdate = () => {
+    found = true
+  }
+  reg.addEventListener('updatefound', onUpdate)
+  try {
+    await reg.update()
+  } catch {
+    /* offline or blocked */
+  }
+  /* Give the browser a moment to begin installing a new worker. */
+  await new Promise((r) => setTimeout(r, 2500))
+  reg.removeEventListener('updatefound', onUpdate)
+
+  if (!found && !reg.installing && !reg.waiting) {
+    setMsg("You're on the latest version ✨")
+    return
+  }
+
+  setMsg('New version found — refreshing…')
+  if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+  let reloaded = false
+  const reload = () => {
+    if (reloaded) return
+    reloaded = true
+    location.reload()
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true })
+  /* Fallback in case controllerchange never fires. */
+  setTimeout(reload, 3500)
+}
+
 export function Settings() {
   const { theme, setTheme, as, setAs, anniversary, setAnniversary, customEmojis, setCustomEmojis, setDates, setMemories, setTreats, setNotes, setSongs, setPlaylists, setPoints, pushToast, syncCfg, setSyncCfg, syncStatus, syncNow, unsync, profiles, setProfile } =
     useApp()
@@ -88,6 +135,14 @@ export function Settings() {
   const checkForUpdates = async () => {
     setUpdating(true)
     setUpdateMsg('')
+    if (!isTauri) {
+      try {
+        await checkWebUpdate(setUpdateMsg)
+      } finally {
+        setUpdating(false)
+      }
+      return
+    }
     try {
       const update = await check()
       if (!update) {
@@ -815,23 +870,21 @@ create policy "update" on public.rooms
                 ? appVersion
                   ? `You're on version ${appVersion}.`
                   : 'Check for a new version.'
-                : 'This is the web version — it always stays up to date. Add it to your home screen for the full app feel.'}
-              {isTauri && updateMsg && (
+                : 'The web app keeps itself up to date — check for a new version anytime.'}
+              {updateMsg && (
                 <span className="mt-0.5 block text-xs font-bold text-blush-500">
                   {updateMsg}
                 </span>
               )}
             </p>
           </div>
-          {isTauri && (
-            <button
-              onClick={() => void checkForUpdates()}
-              disabled={updating}
-              className="btn-candy disabled:opacity-60"
-            >
-              {updating ? '…' : 'Check for updates'}
-            </button>
-          )}
+          <button
+            onClick={() => void checkForUpdates()}
+            disabled={updating}
+            className="btn-candy disabled:opacity-60"
+          >
+            {updating ? '…' : 'Check for updates'}
+          </button>
         </div>
       </section>
 
