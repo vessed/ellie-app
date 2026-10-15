@@ -288,6 +288,13 @@ export interface PlayState {
 /* Last-seen timestamps per person, used for the online/offline indicator. */
 export type Presence = Partial<Record<Who, number>>
 
+/* A Web Push subscription for one phone, so the other phone can buzz it even
+   when the app is closed. Synced per-person through the shared room. */
+export interface PushSub {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+
 export interface ProfilePic {
   /* downscaled image data URL */
   src: string

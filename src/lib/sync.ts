@@ -8,6 +8,7 @@ import type {
   Pot,
   Presence,
   Profiles,
+  PushSub,
   PupState,
   Who,
 } from './types'
@@ -52,6 +53,7 @@ export const SHARED_KEYS = [
   'care',
   'presence',
   'profiles',
+  'pushSubs',
 ] as const
 
 export type SharedKey = (typeof SHARED_KEYS)[number]
@@ -192,6 +194,26 @@ function mergePresence(newer: unknown, older: unknown): Presence {
   return out
 }
 
+/* Push subscriptions: one per person. Keep each person's from whichever side
+   has it, so neither device's subscription is ever dropped by the other. */
+function mergePushSubs(
+  newer: unknown,
+  older: unknown,
+): Partial<Record<Who, PushSub>> {
+  const n = (newer && typeof newer === 'object' ? newer : {}) as Partial<
+    Record<Who, PushSub>
+  >
+  const o = (older && typeof older === 'object' ? older : {}) as Partial<
+    Record<Who, PushSub>
+  >
+  const out: Partial<Record<Who, PushSub>> = {}
+  if (n.ellie) out.ellie = n.ellie
+  else if (o.ellie) out.ellie = o.ellie
+  if (n.you) out.you = n.you
+  else if (o.you) out.you = o.you
+  return out
+}
+
 /* Profiles: per-person, whichever was set most recently wins. */
 function mergeProfiles(newer: unknown, older: unknown): Profiles {
   const n = (newer && typeof newer === 'object' ? newer : {}) as Profiles
@@ -261,6 +283,7 @@ const MERGERS: Record<string, (newer: unknown, older: unknown) => unknown> = {
   care: mergeCare,
   presence: mergePresence,
   profiles: mergeProfiles,
+  pushSubs: mergePushSubs,
   hearts: (n, o) =>
     Math.max(typeof n === 'number' ? n : 0, typeof o === 'number' ? o : 0),
 }

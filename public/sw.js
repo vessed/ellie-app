@@ -6,7 +6,7 @@
      refresh quietly in the background.
    - Everything else: straight to the network. */
 
-const CACHE = 'ellie-app-v1'
+const CACHE = 'ellie-app-v2'
 
 /* Scope root (works at a domain root or under a subpath like /ellie-app/). */
 const ROOT = new URL('./', self.location.href).href
@@ -34,6 +34,58 @@ self.addEventListener('activate', (event) => {
 /* Let the page tell a freshly-installed worker to take over right away. */
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
+/* Real push: a heart/note/mood the other person sends arrives here even when
+   the app is closed, and we pop it as an OS notification. */
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    try {
+      data = { body: event.data.text() }
+    } catch {
+      data = {}
+    }
+  }
+  const icon = new URL('icons/icon-192.png', self.registration.scope).href
+  const title = data.title || 'Ellie 💗'
+  const options = {
+    body: data.body || 'You have a new love note 💗',
+    icon,
+    badge: icon,
+    tag: 'ellie',
+    renotify: true,
+    data: { url: new URL('./', self.registration.scope).href },
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    (async () => {
+      const url =
+        (event.notification.data && event.notification.data.url) ||
+        new URL('./', self.registration.scope).href
+      const list = await clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      for (const c of list) {
+        if ('focus' in c) {
+          try {
+            await c.focus()
+            return
+          } catch {
+            /* fall through to opening a new window */
+          }
+        }
+      }
+      if (clients.openWindow) await clients.openWindow(url)
+    })(),
+  )
 })
 
 const ASSET_RE = /\.(?:js|mjs|css|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot|mp3|wav|ogg|m4a|flac|json|webmanifest)$/i

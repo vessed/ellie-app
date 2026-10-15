@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -8,6 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import { ensureBuiltinMusic } from './builtin'
+import { osNotifyPref } from './notify'
+import { ensurePushSubscription } from './push'
 import {
   DEFAULT_CARE,
   normalizeCare,
@@ -29,6 +32,7 @@ import {
   type PlayState,
   type Presence,
   type Profiles,
+  type PushSub,
   type Route,
   type RuleItem,
   type Song,
@@ -457,6 +461,12 @@ interface AppContextValue {
   unsync: () => void
 
   pushToast: (message: string, emoji?: string, action?: () => void) => void
+
+  /* Real push: buzz the other phone (even when its app is closed) and manage
+     this device's own subscription. */
+  notifyPush: (title: string, body: string) => void
+  syncPushSubscription: () => Promise<boolean>
+  sendTestPush: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -500,6 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAlerts((prev) =>
       [{ id: uid(), to, body, createdAt: Date.now() }, ...prev].slice(0, 40),
     )
+    if (to !== as) notifyPushTo(to, 'A little note for you 🔔', body)
   }
   const [songs, setSongs] = usePersist<Song[]>('ellie-songs', seedSongs)
   const [playlists, setPlaylists] = usePersist<Playlist[]>(
@@ -525,6 +536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ].slice(0, 80),
     )
     playHeart()
+    notifyPush(`${WHO_NAME[as]} sent you a heart 💗`, 'Open Ellie to send one back 💗')
   }
 
   const [profiles, setProfiles] = usePersist<Profiles>('ellie-profiles', {})
@@ -550,6 +562,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [as, setPresence])
 
+  /* This device's Web Push subscription plus the other phone's (synced), so
+     either phone can buzz the other through the send-push Edge Function. */
+  const [pushSubs, setPushSubs] = usePersist<Partial<Record<Who, PushSub>>>(
+    'ellie-push-subs',
+    {},
+  )
+
   const [wishes, setWishes] = usePersist<WishItem[]>('ellie-wishes', [])
   const [customEmojis, setCustomEmojis] = usePersist<CustomEmoji[]>(
     'ellie-custom-emojis',
@@ -562,6 +581,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...prev.filter((m) => m.who !== as),
       { id: uid(), who: as, emoji, label, note: note.trim(), updatedAt: Date.now() },
     ])
+    notifyPush(
+      `${WHO_NAME[as]} is feeling ${label} ${emoji}`,
+      as === 'ellie' ? 'Tap to see how she feels 💗' : 'Tap to see how he feels 💗',
+    )
   }
 
   const [todoRoutine, setTodoRoutine] = usePersist<TodoTask[]>(
@@ -729,6 +752,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       alerts,
       presence,
       profiles,
+      pushSubs,
     }),
     [
       dates,
@@ -760,6 +784,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       alerts,
       presence,
       profiles,
+      pushSubs,
     ],
   )
   const valuesRef = useRef(sharedValues)
@@ -848,6 +873,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       alerts: (v) => setAlerts(v as never),
       presence: (v) => setPresence(v as never),
       profiles: (v) => setProfiles(v as never),
+      pushSubs: (v) => setPushSubs(v as never),
     }
 
     const refreshLocal = () => {
@@ -1093,6 +1119,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [as, notes, setRoute])
 
+  const invokePush = useCallback(
+    async (target: PushSub, title: string, body: string) => {
+      const client = clientRef.current
+      if (!client) return
+      try {
+        await client.functions.invoke('send-push', {
+          body: { sub: target, title, body },
+        })
+      } catch {
+        /* push is best-effort */
+      }
+    },
+    [],
+  )
+
+  const notifyPushTo = useCallback(
+    (to: Who, title: string, body: string) => {
+      const sub = pushSubs[to]
+      if (sub) void invokePush(sub, title, body)
+    },
+    [pushSubs, invokePush],
+  )
+
+  /* Buzz the *other* phone (not your own) — used after sending a heart, note,
+     mood or reminder. */
+  const notifyPush = useCallback(
+    (title: string, body: string) => {
+      notifyPushTo(as === 'you' ? 'ellie' : 'you', title, body)
+    },
+    [as, notifyPushTo],
+  )
+
+  /* Create + store this device's own subscription, so the other phone can reach
+     it. Called from Settings when notifications are turned on. */
+  const syncPushSubscription = useCallback(async () => {
+    const sub = await ensurePushSubscription()
+    if (!sub) return false
+    setPushSubs((prev) =>
+      prev[as]?.endpoint === sub.endpoint ? prev : { ...prev, [as]: sub },
+    )
+    return true
+  }, [as, setPushSubs])
+
+  const sendTestPush = useCallback(async () => {
+    const sub = pushSubs[as] ?? (await ensurePushSubscription())
+    if (sub) await invokePush(sub, 'Ellie 💗', 'Test notification — you’re all set!')
+  }, [as, pushSubs, invokePush])
+
+  /* Keep this device's subscription fresh on launch when notifications are on. */
+  useEffect(() => {
+    if (!osNotifyPref()) return
+    let alive = true
+    void ensurePushSubscription().then((sub) => {
+      if (!alive || !sub) return
+      setPushSubs((prev) =>
+        prev[as]?.endpoint === sub.endpoint ? prev : { ...prev, [as]: sub },
+      )
+    })
+    return () => {
+      alive = false
+    }
+  }, [as, setPushSubs])
+
   const syncNow = () => {
     void pollRef.current?.()
   }
@@ -1263,6 +1352,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     syncNow,
     unsync,
     pushToast,
+    notifyPush,
+    syncPushSubscription,
+    sendTestPush,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

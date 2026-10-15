@@ -113,7 +113,7 @@ async function checkWebUpdate(setMsg: (s: string) => void): Promise<void> {
 }
 
 export function Settings() {
-  const { theme, setTheme, as, setAs, anniversary, setAnniversary, customEmojis, setCustomEmojis, setDates, setMemories, setTreats, setNotes, setSongs, setPlaylists, setPoints, pushToast, syncCfg, setSyncCfg, syncStatus, syncNow, unsync, profiles, setProfile } =
+  const { theme, setTheme, as, setAs, anniversary, setAnniversary, customEmojis, setCustomEmojis, setDates, setMemories, setTreats, setNotes, setSongs, setPlaylists, setPoints, pushToast, syncCfg, setSyncCfg, syncStatus, syncNow, unsync, profiles, setProfile, syncPushSubscription, sendTestPush } =
     useApp()
   const avatarRefs = useRef<Record<'you' | 'ellie', HTMLInputElement | null>>({
     you: null,
@@ -362,8 +362,14 @@ export function Settings() {
     setNotifPerm(notificationPermission())
     setOsNotifyPref(ok)
     setNotifOn(ok)
+    let real = false
+    if (ok) real = await syncPushSubscription()
     pushToast(
-      ok ? 'Notifications turned on 🔔' : 'No worries — you can turn them on later 🙈',
+      ok
+        ? real
+          ? 'Notifications turned on 🔔'
+          : 'Alerts on here — turn on sync so the other phone can buzz you 💞'
+        : 'No worries — you can turn them on later 🙈',
       ok ? '🔔' : '🙈',
     )
   }
@@ -688,8 +694,8 @@ create policy "update" on public.rooms
             Notifications 🔔
           </h3>
           <p className="mb-4 text-sm font-semibold text-blush-700/75">
-            Get a pop-up when a heart, love note, mood change or reminder
-            arrives while the app is open in the background.
+            Get a real pop-up on this phone when a heart, love note, mood change
+            or reminder arrives — even if the app is closed.
           </p>
 
           {notifPerm === 'unsupported' ? (
@@ -722,6 +728,14 @@ create policy "update" on public.rooms
                   className="btn-ghost"
                 >
                   Turn off
+                </button>
+              )}
+              {notifOn && notifPerm === 'granted' && (
+                <button
+                  onClick={() => void sendTestPush()}
+                  className="btn-ghost"
+                >
+                  Send a test 🔔
                 </button>
               )}
             </div>

@@ -26,7 +26,7 @@ const MOODS = [
 type View = 'all' | 'saved'
 
 export function Notes() {
-  const { notes, setNotes, as, pushToast, customEmojis } = useApp()
+  const { notes, setNotes, as, pushToast, customEmojis, notifyPush } = useApp()
   const [body, setBody] = useState('')
   const [mood, setMood] = useState('💗')
   const [view, setView] = useState<View>('all')
@@ -65,6 +65,10 @@ export function Notes() {
       likes: [],
     }
     setNotes((prev) => [note, ...prev])
+    notifyPush(
+      `${WHO_NAME[as]} sent you a love note 💌`,
+      body.trim().slice(0, 120),
+    )
     pushToast(
       `Note sent to ${WHO_NAME[to]} — they'll get a ping! 💌`,
       '💌',
