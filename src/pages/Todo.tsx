@@ -270,11 +270,11 @@ export function Todo() {
 
       {/* Day header: date + calendar on the left, live date on the right */}
       <div className="glass flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow">
             <CalendarIcon className="h-5 w-5" />
           </div>
-          <div className="leading-tight">
+          <div className="min-w-0 leading-tight">
             <p className="font-display text-lg font-extrabold text-blush-900">
               {prettyDate(today)}
             </p>
@@ -333,7 +333,7 @@ export function Todo() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Checklist */}
-        <div className="flex flex-col gap-5 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
           {canEdit && (
             <div className="glass-soft p-4 text-sm font-semibold text-blush-600">
               Tap + on any section to add a task. You can edit the time later with
@@ -347,7 +347,7 @@ export function Todo() {
             return (
               <section key={s.key} className="glass p-4 sm:p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 font-display text-lg font-extrabold text-blush-900">
+                  <h3 className="flex min-w-0 items-center gap-2 font-display text-lg font-extrabold text-blush-900">
                     <span>{s.emoji}</span>
                     {s.label}
                     {items.length > 0 && (
@@ -366,7 +366,7 @@ export function Todo() {
                         }
                         setAddingSection(s.key)
                       }}
-                      className="btn-ghost !px-3 !py-1.5 text-sm"
+                      className="btn-ghost shrink-0 !px-3 !py-1.5 text-sm"
                     >
                       <PlusIcon className="h-4 w-4" />
                       Add
@@ -399,7 +399,7 @@ export function Todo() {
                 {addingSection === s.key && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 bg-white/50 p-3 !rounded-2xl">
                     <input
-                      className={`${inputCls} !w-auto flex-1 min-w-40`}
+                      className={`${inputCls} !w-auto flex-1 min-w-0`}
                       placeholder="Task…"
                       value={newText}
                       onChange={(e) => setNewText(e.target.value)}
@@ -409,12 +409,12 @@ export function Todo() {
                       autoFocus
                     />
                     <input
-                      className={`${inputCls} !w-32`}
+                      className={`${inputCls} !w-32 min-w-0`}
                       placeholder="Time (7:30pm)"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
                     />
-                    <button onClick={() => addTask(s.key)} className="btn-candy">
+                    <button onClick={() => addTask(s.key)} className="btn-candy shrink-0">
                       <CheckIcon className="h-4 w-4" />
                       Add
                     </button>
@@ -423,7 +423,7 @@ export function Todo() {
                         suppressNextClick()
                         setAddingSection(null)
                       }}
-                      className="btn-ghost"
+                      className="btn-ghost shrink-0"
                     >
                       Cancel
                     </button>
@@ -470,7 +470,7 @@ export function Todo() {
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <input
-                      className={`${inputCls} flex-1`}
+                      className={`${inputCls} min-w-0 flex-1`}
                       placeholder="What feeling are you carrying today?"
                       value={todoDay.mood}
                       onChange={(e) => setMood(e.target.value)}
@@ -545,7 +545,7 @@ export function Todo() {
                     <CheckIcon className="h-4 w-4" />
                   </button>
                   <p
-                    className={`flex-1 text-sm font-bold ${
+                    className={`min-w-0 flex-1 break-words text-sm font-bold ${
                       extraStatus(e.id)
                         ? 'text-blush-400 line-through'
                         : 'text-blush-800'
@@ -557,7 +557,7 @@ export function Todo() {
                     <button
                       onClick={() => removeExtra(e.id)}
                       aria-label="Remove extra task"
-                      className="grid h-8 w-8 place-items-center rounded-xl text-blush-400 transition hover:bg-blush-100 hover:text-blush-600"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-blush-400 transition hover:bg-blush-100 hover:text-blush-600"
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
@@ -574,7 +574,7 @@ export function Todo() {
             {canEdit && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
-                  className={`${inputCls} flex-1`}
+                  className={`${inputCls} min-w-0 flex-1`}
                   placeholder="A special task just for today…"
                   value={extraText}
                   onChange={(e) => setExtraText(e.target.value)}
@@ -582,7 +582,7 @@ export function Todo() {
                     if (e.key === 'Enter') addExtra()
                   }}
                 />
-                <button onClick={addExtra} className="btn-candy">
+                <button onClick={addExtra} className="btn-candy shrink-0">
                   <PlusIcon className="h-4 w-4" />
                   Add
                 </button>
@@ -592,7 +592,7 @@ export function Todo() {
         </div>
 
         {/* Right rail: archive for Micah */}
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           {as === 'you' ? (
             <HistoryPanel
               history={history}
