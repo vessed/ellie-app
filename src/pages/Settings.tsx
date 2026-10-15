@@ -7,6 +7,7 @@ import { loadProfile, SPOTIFY_REDIRECT } from '../lib/spotify'
 import { downloadBackup, restoreBackup } from '../lib/backup'
 import { check } from '@tauri-apps/plugin-updater'
 import { getVersion } from '@tauri-apps/api/app'
+import { isTauri } from '../lib/platform'
 import { PageHeader } from '../components/PageHeader'
 import { Avatar } from '../components/Avatar'
 import { Field, inputCls } from '../components/Modal'
@@ -78,6 +79,7 @@ export function Settings() {
   const [updateMsg, setUpdateMsg] = useState('')
 
   useEffect(() => {
+    if (!isTauri) return
     getVersion()
       .then(setAppVersion)
       .catch(() => setAppVersion(''))
@@ -809,23 +811,27 @@ create policy "update" on public.rooms
               App updates
             </h3>
             <p className="text-sm font-semibold text-blush-700/75">
-              {appVersion
-                ? `You're on version ${appVersion}.`
-                : 'Check for a new version.'}
-              {updateMsg && (
+              {isTauri
+                ? appVersion
+                  ? `You're on version ${appVersion}.`
+                  : 'Check for a new version.'
+                : 'This is the web version — it always stays up to date. Add it to your home screen for the full app feel.'}
+              {isTauri && updateMsg && (
                 <span className="mt-0.5 block text-xs font-bold text-blush-500">
                   {updateMsg}
                 </span>
               )}
             </p>
           </div>
-          <button
-            onClick={() => void checkForUpdates()}
-            disabled={updating}
-            className="btn-candy disabled:opacity-60"
-          >
-            {updating ? '…' : 'Check for updates'}
-          </button>
+          {isTauri && (
+            <button
+              onClick={() => void checkForUpdates()}
+              disabled={updating}
+              className="btn-candy disabled:opacity-60"
+            >
+              {updating ? '…' : 'Check for updates'}
+            </button>
+          )}
         </div>
       </section>
 

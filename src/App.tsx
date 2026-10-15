@@ -6,6 +6,7 @@ import { BUILTIN_SONGS } from './lib/builtin'
 import { softClick, consumeClickSound } from './lib/sound'
 import { Background } from './components/Background'
 import { Sidebar } from './components/Sidebar'
+import { MobileNav } from './components/MobileNav'
 import { TopBar } from './components/TopBar'
 import { Toasts } from './components/Toast'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -106,7 +107,7 @@ function Screen() {
       <div className="flex h-full w-full gap-6 p-5 lg:gap-8 lg:p-7">
         <Sidebar />
 
-        <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto pr-1">
+        <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto pr-1 pb-24 md:pb-6">
           <TopBar />
           <Suspense fallback={<PageFallback />}>
             {route === 'home' && <Home />}
@@ -128,6 +129,7 @@ function Screen() {
       </div>
 
       <Toasts />
+      <MobileNav />
     </div>
   )
 }

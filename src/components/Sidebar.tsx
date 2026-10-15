@@ -1,72 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../lib/store'
 import type { Route } from '../lib/types'
-import {
-  BookIcon,
-  CalendarIcon,
-  EditIcon,
-  CameraIcon,
-  GiftIcon,
-  GripIcon,
-  HomeIcon,
-  MoodIcon,
-  MusicIcon,
-  NoteIcon,
-  RibbonIcon,
-  SettingsIcon,
-  StarIcon,
-  TodoIcon,
-  BlocksIcon,
-} from './Icons'
+import { NAV, loadNavOrder, SIDEBAR_ORDER_KEY } from '../lib/nav'
+import { GripIcon } from './Icons'
 import { NotificationCenter } from './NotificationCenter'
 import { Avatar } from './Avatar'
 import { suppressNextClick } from '../lib/sound'
 
-const nav: { key: Route; label: string; icon: typeof HomeIcon }[] = [
-  { key: 'home', label: 'Home', icon: HomeIcon },
-  { key: 'daily', label: 'Daily', icon: StarIcon },
-  { key: 'mood', label: 'Our Moods', icon: MoodIcon },
-  { key: 'todo', label: 'Checklist', icon: TodoIcon },
-  { key: 'playroom', label: 'Playroom', icon: BlocksIcon },
-  { key: 'dates', label: 'Dates', icon: CalendarIcon },
-  { key: 'memories', label: 'Memories', icon: CameraIcon },
-  { key: 'treats', label: 'Treat Jar', icon: GiftIcon },
-  { key: 'wishlist', label: 'Wishlist', icon: RibbonIcon },
-  { key: 'music', label: 'Music', icon: MusicIcon },
-  { key: 'notes', label: 'Love Notes', icon: NoteIcon },
-  { key: 'library', label: 'Library', icon: BookIcon },
-  { key: 'rules', label: 'Rulebook', icon: EditIcon },
-  { key: 'settings', label: 'Settings', icon: SettingsIcon },
-]
-
 const ROW_GAP = 6
-const SIDEBAR_ORDER_KEY = 'ellie-sidebar-order-v2'
-
-function loadOrder(): Route[] {
-  const all: Route[] = nav.map((n) => n.key)
-  try {
-    const raw = localStorage.getItem(SIDEBAR_ORDER_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as unknown
-      if (Array.isArray(parsed)) {
-        const seen = new Set<Route>()
-        const out: Route[] = []
-        for (const k of parsed) {
-          const key = k as Route
-          if (all.includes(key) && !seen.has(key)) {
-            out.push(key)
-            seen.add(key)
-          }
-        }
-        for (const key of all) if (!seen.has(key)) out.push(key)
-        if (out.length === all.length) return out
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return all
-}
 
 interface DragState {
   key: Route
@@ -81,7 +22,7 @@ export function Sidebar() {
   const { route, setRoute, notes, as } = useApp()
   const unread = notes.filter((n) => n.to === as && !n.read).length
 
-  const [order, setOrder] = useState<Route[]>(loadOrder)
+  const [order, setOrder] = useState<Route[]>(loadNavOrder)
   const [drag, setDrag] = useState<DragState | null>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
   const justDraggedRef = useRef(false)
@@ -168,7 +109,7 @@ export function Sidebar() {
 
       <nav className="-mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1 pb-1">
         {order.map((key, i) => {
-          const item = nav.find((n) => n.key === key)!
+          const item = NAV.find((n) => n.key === key)!
           const Icon = item.icon
           const isActive = route === item.key
           const isDragged = drag?.key === item.key

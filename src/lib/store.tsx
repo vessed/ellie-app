@@ -42,6 +42,7 @@ import {
   type WishItem,
 } from './types'
 import { playHeart, playMood, playPing } from './sound'
+import { idbGet, idbSet } from './idb'
 import { useToasts } from './toast'
 import {
   SHARED_KEYS,
@@ -80,49 +81,85 @@ function bindFlushOnce() {
   })
 }
 
-function usePersist<T>(key: string, initial: T, migrate?: (v: T) => T) {
-  const [val, setVal] = useState<T>(() => {
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw) return migrate ? migrate(JSON.parse(raw) as T) : (JSON.parse(raw) as T)
-    } catch {
-      /* ignore */
-    }
-    return initial
-  })
+/* Every value is written to localStorage for fast sync reads and mirrored to
+   IndexedDB, which survives the eviction that can wipe localStorage on iOS. */
+function writeThrough(key: string, json: string) {
+  try {
+    localStorage.setItem(key, json)
+  } catch {
+    /* ignore */
+  }
+  idbSet(key, json)
+}
 
+function readStored<T>(key: string, migrate?: (v: T) => T): T | undefined {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw != null) return migrate ? migrate(JSON.parse(raw) as T) : (JSON.parse(raw) as T)
+  } catch {
+    /* ignore */
+  }
+  return undefined
+}
+
+function usePersist<T>(key: string, initial: T, migrate?: (v: T) => T) {
+  const [val, setVal] = useState<T>(() => readStored(key, migrate) ?? initial)
+  const hadStored = useRef<boolean>(
+    (() => {
+      try {
+        return localStorage.getItem(key) !== null
+      } catch {
+        return true
+      }
+    })(),
+  )
+  const [hydrated, setHydrated] = useState(hadStored.current)
   const valRef = useRef(val)
+
+  /* If localStorage was empty (fresh device, or iOS evicted it), restore the
+     last good value from the IndexedDB mirror before we start writing. */
+  useEffect(() => {
+    if (hadStored.current) return
+    let alive = true
+    idbGet(key)
+      .then((raw) => {
+        if (!alive || raw == null) return
+        try {
+          setVal(migrate ? migrate(JSON.parse(raw) as T) : (JSON.parse(raw) as T))
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setHydrated(true)
+      })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 
   /* Debounced write — resets on each change, so a burst of edits = one write. */
   useEffect(() => {
     valRef.current = val
-    const timer = window.setTimeout(() => {
-      try {
-        localStorage.setItem(key, JSON.stringify(valRef.current))
-      } catch {
-        /* ignore */
-      }
-    }, PERSIST_DEBOUNCE_MS)
+    if (!hydrated) return
+    const json = JSON.stringify(val)
+    const timer = window.setTimeout(() => writeThrough(key, json), PERSIST_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [key, val])
+  }, [key, val, hydrated])
 
-  /* Register an immediate flush for hide/close, and write the final value on
-     unmount (which also covers navigating away from a page mid-edit). */
+  /* Flush synchronously when the app is hidden or closed. */
   useEffect(() => {
+    if (!hydrated) return
     bindFlushOnce()
-    const flush = () => {
-      try {
-        localStorage.setItem(key, JSON.stringify(valRef.current))
-      } catch {
-        /* ignore */
-      }
-    }
+    const flush = () => writeThrough(key, JSON.stringify(valRef.current))
     pendingWrites.set(key, flush)
     return () => {
       flush()
       pendingWrites.delete(key)
     }
-  }, [key])
+  }, [key, hydrated])
 
   return [val, setVal] as const
 }

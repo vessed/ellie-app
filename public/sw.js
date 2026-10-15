@@ -1,0 +1,97 @@
+/* Ellie App service worker — makes the app installable and usable offline.
+
+   Strategy:
+   - Navigations: network-first, fall back to the cached app shell when offline.
+   - Hashed/static assets (js, css, images, fonts, audio): cache-first, then
+     refresh quietly in the background.
+   - Everything else: straight to the network. */
+
+const CACHE = 'ellie-app-v1'
+
+/* Scope root (works at a domain root or under a subpath like /ellie-app/). */
+const ROOT = new URL('./', self.location.href).href
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting()
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.add(ROOT))
+      .catch(() => {}),
+  )
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys()
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      await self.clients.claim()
+    })(),
+  )
+})
+
+const ASSET_RE = /\.(?:js|mjs|css|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot|mp3|wav|ogg|m4a|flac|json|webmanifest)$/i
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+
+  let url
+  try {
+    url = new URL(req.url)
+  } catch {
+    return
+  }
+  if (url.origin !== self.location.origin) return
+
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(req)
+          const copy = res.clone()
+          caches.open(CACHE).then((c) => c.put(ROOT, copy)).catch(() => {})
+          return res
+        } catch {
+          return (
+            (await caches.match(req)) ||
+            (await caches.match(ROOT)) ||
+            new Response('Offline', { status: 503, statusText: 'Offline' })
+          )
+        }
+      })(),
+    )
+    return
+  }
+
+  const isAsset = url.pathname.includes('/assets/') || ASSET_RE.test(url.pathname)
+  const isRange = req.headers.has('range')
+  if (!isAsset || isRange) return
+
+  event.respondWith(
+    (async () => {
+      const cached = await caches.match(req)
+      if (cached) {
+        fetch(req)
+          .then((res) => {
+            if (res && res.status === 200 && res.type === 'basic') {
+              caches.open(CACHE).then((c) => c.put(req, res.clone())).catch(() => {})
+            }
+          })
+          .catch(() => {})
+        return cached
+      }
+      try {
+        const res = await fetch(req)
+        if (res && res.status === 200 && res.type === 'basic') {
+          const copy = res.clone()
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {})
+        }
+        return res
+      } catch {
+        return new Response('Offline', { status: 503, statusText: 'Offline' })
+      }
+    })(),
+  )
+})
