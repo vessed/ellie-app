@@ -264,6 +264,22 @@ const seedDailyReminders: RuleItem[] = [
   'Sweetheart, whatever today looked like, I am still so glad you are mine 💖',
   'Sweetheart, do one kind thing for yourself today, just one 🍪',
   'Remember, sweetheart: you are never a burden and never too much 🧸',
+  'Good morning, bunny — hop into today gently and at your own pace 🐰',
+  'Bunny, don’t forget to eat something nice and drink your water 🥕',
+  'You are so soft and sweet, bunny — daddy adores you 🐇',
+  'Little bunny, it is okay to take today slow and cozy 🧺',
+  'Baby, you are the most precious thing in daddy’s whole world 👶',
+  'Come here, baby — imagine the biggest, warmest cuddle 🤍',
+  'Baby, take good care of yourself for me today — eat, drink, rest 🌷',
+  'Daddy’s baby, you are so loved it is impossible to measure 💗',
+  'Good morning, gorgeous — you look lovely even when you just woke up ☀️',
+  'Gorgeous, take a second to admire how pretty you are today 💄',
+  'You are absolutely gorgeous, inside and out — never forget it ✨',
+  'Hey gorgeous, do one little thing that makes you feel pretty today 🎀',
+  'Little one, you are growing so well and daddy could not be prouder 🌱',
+  'My little one, you are allowed to be small and held today 🧸',
+  'Little girl, you are so brave even on the days you do not feel brave 🌈',
+  'My little girl, come rest your head — daddy has you 🤍',
 ].map((text, i) => ({ id: `daily-reminder-${i + 1}`, text }))
 
 /* Per-key sync timestamps from the last session, so relaunching the app doesn't
@@ -554,8 +570,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
        existed, without resurrecting ones the user has since deleted. */
     (v) => {
       try {
-        if (localStorage.getItem('ellie-daily-reminders-seed') === '5') return v
-        localStorage.setItem('ellie-daily-reminders-seed', '5')
+        if (localStorage.getItem('ellie-daily-reminders-seed') === '6') return v
+        localStorage.setItem('ellie-daily-reminders-seed', '6')
         const have = new Set(v.map((it) => it.text))
         const extra = seedDailyReminders.filter((it) => !have.has(it.text))
         return extra.length ? [...v, ...extra] : v

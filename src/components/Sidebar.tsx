@@ -8,7 +8,6 @@ import {
   CameraIcon,
   GiftIcon,
   GripIcon,
-  HeartIcon,
   HomeIcon,
   MoodIcon,
   MusicIcon,
@@ -20,6 +19,7 @@ import {
   BlocksIcon,
 } from './Icons'
 import { NotificationCenter } from './NotificationCenter'
+import { Avatar } from './Avatar'
 import { suppressNextClick } from '../lib/sound'
 
 const nav: { key: Route; label: string; icon: typeof HomeIcon }[] = [
@@ -155,9 +155,7 @@ export function Sidebar() {
   return (
     <aside className="glass hidden w-60 shrink-0 flex-col p-5 md:flex lg:w-64">
       <div className="mb-6 flex items-center gap-3 px-1">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blush-300 to-lilac-300 text-white shadow-glow">
-          <HeartIcon className="h-6 w-6" />
-        </div>
+        <Avatar who={as} size={44} className="shadow-glow" />
         <div className="min-w-0 leading-tight">
           <p className="truncate font-display text-lg font-extrabold text-candy-dark">
             Micah and Ellie
